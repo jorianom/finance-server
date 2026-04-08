@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "dev:all": "concurrently --kill-others-on-fail -n backend,frontend -c cyan,magenta \"npm run dev\" \"npm run dev --prefix finance-me-front\"",
-    "build": "tsc && tsc-alias",
+    "build": "prisma generate && tsc && tsc-alias",
+    "postinstall": "prisma generate",
     "start": "node dist/server.js",
     "db:generate": "prisma generate",
     "db:pull": "prisma db pull",

@@ -17,12 +17,13 @@ export class PrismaCategoryRepository implements ICategoryRepository {
     });
 
     // Prefer dedicated fallback categories by name; otherwise use first of each type
+    type CategoryRow = { id: bigint; name: string; type: string };
     const income =
-      categories.find(c => c.name === 'Ingresos General') ??
-      categories.find(c => c.type === 'ingreso' || c.type === 'income');
+      categories.find((c: CategoryRow) => c.name === 'Ingresos General') ??
+      categories.find((c: CategoryRow) => c.type === 'ingreso' || c.type === 'income');
     const expense =
-      categories.find(c => c.name === 'Gastos General') ??
-      categories.find(c => c.type === 'gasto' || c.type === 'expense');
+      categories.find((c: CategoryRow) => c.name === 'Gastos General') ??
+      categories.find((c: CategoryRow) => c.type === 'gasto' || c.type === 'expense');
 
     return {
       incomeCategoryId: income ? Number(income.id) : null,
