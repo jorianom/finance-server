@@ -15,6 +15,9 @@ export interface EnrichTransactionInput {
   merchant: string;
   reference?: string;
   emailId?: string;
+  destinationKey?: string;   // transfer: "Llave destino" (phone/alias)
+  destinationBank?: string;  // transfer: destination bank name
+  type?: 'debit' | 'credit'; // defaults to 'debit'
 }
 
 export type EnrichTransactionResult =
@@ -44,7 +47,8 @@ export class EnrichTransactionUseCase {
     const date = new Date(input.date + 'T00:00:00.000Z');
 
     // Find matching transactions
-    const matches = await this.txRepo.findByMatchCriteria(accountId, date, input.amount, 'debit');
+    const txType = input.type ?? 'debit';
+    const matches = await this.txRepo.findByMatchCriteria(accountId, date, input.amount, txType);
 
     if (matches.length === 0) {
       return { status: 'not_found' };
@@ -77,7 +81,11 @@ export class EnrichTransactionUseCase {
     }
 
     const autoClassified = result.categoryId === null && categoryId !== null;
-    const merchant = input.merchant;
+
+    // Build the merchant label — for transfers include the destination key
+    const merchant = input.destinationKey
+      ? `Transferencia → ${input.destinationKey}${input.destinationBank ? ` (${input.destinationBank})` : ''}`
+      : input.merchant;
 
     await this.txRepo.updateMerchantAndCategory(tx.id!, merchant, categoryId, autoClassified);
 

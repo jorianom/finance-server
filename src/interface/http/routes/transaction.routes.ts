@@ -116,6 +116,9 @@ export async function transactionRoutes(
       merchant: string;
       reference?: string;
       email_id?: string;
+      destination_key?: string;   // transfer: "Llave destino" (phone/alias)
+      destination_bank?: string;  // transfer: destination bank name
+      type?: 'debit' | 'credit';  // defaults to 'debit'
     };
 
     if (!body.date || !body.amount || !body.merchant) {
@@ -133,6 +136,9 @@ export async function transactionRoutes(
       merchant: body.merchant,
       reference: body.reference,
       emailId: body.email_id,
+      destinationKey: body.destination_key,
+      destinationBank: body.destination_bank,
+      type: body.type,
     });
 
     return reply.send(result);
