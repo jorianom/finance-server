@@ -50,11 +50,11 @@ export class EnrichTransactionUseCase {
     const txType = input.type ?? 'debit';
     let matches = await this.txRepo.findByMatchCriteria(accountId, date, input.amount, txType);
 
-    // Retry with date+1: weekend/holiday transactions may be posted the next business day
-    if (matches.length === 0) {
-      const datePlusOne = new Date(date);
-      datePlusOne.setUTCDate(datePlusOne.getUTCDate() + 1);
-      matches = await this.txRepo.findByMatchCriteria(accountId, datePlusOne, input.amount, txType);
+    // Retry up to +3 days: weekends/holidays may post the transaction several days later
+    for (let offset = 1; offset <= 3 && matches.length === 0; offset++) {
+      const retryDate = new Date(date);
+      retryDate.setUTCDate(retryDate.getUTCDate() + offset);
+      matches = await this.txRepo.findByMatchCriteria(accountId, retryDate, input.amount, txType);
     }
 
     if (matches.length === 0) {
