@@ -48,7 +48,14 @@ export class EnrichTransactionUseCase {
 
     // Find matching transactions
     const txType = input.type ?? 'debit';
-    const matches = await this.txRepo.findByMatchCriteria(accountId, date, input.amount, txType);
+    let matches = await this.txRepo.findByMatchCriteria(accountId, date, input.amount, txType);
+
+    // Retry with date+1: weekend/holiday transactions may be posted the next business day
+    if (matches.length === 0) {
+      const datePlusOne = new Date(date);
+      datePlusOne.setUTCDate(datePlusOne.getUTCDate() + 1);
+      matches = await this.txRepo.findByMatchCriteria(accountId, datePlusOne, input.amount, txType);
+    }
 
     if (matches.length === 0) {
       return { status: 'not_found' };
