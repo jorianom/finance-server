@@ -1,0 +1,146 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model users {
+  id               BigInt         @id @default(autoincrement())
+  email            String         @unique
+  created_at       DateTime       @default(now()) @db.Timestamptz()
+  cycle_start_day  Int            @default(25)
+  accounts         accounts[]
+  imports          imports[]
+  categories       categories[]
+  transactions     transactions[]
+  rules            rules[]
+  debts            debts[]
+  budget_items     budget_items[]
+}
+
+model accounts {
+  id               BigInt         @id @default(autoincrement())
+  user_id          BigInt?
+  bank_name        String
+  created_at       DateTime       @default(now()) @db.Timestamptz()
+  user             users?         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  imports          imports[]
+  transactions     transactions[]
+}
+
+model imports {
+  id           BigInt         @id @default(autoincrement())
+  user_id      BigInt?
+  account_id   BigInt?
+  file_name    String
+  file_type    String
+  status       String
+  created_at   DateTime       @default(now()) @db.Timestamptz()
+  user         users?         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  account      accounts?      @relation(fields: [account_id], references: [id], onDelete: Cascade)
+  transactions transactions[]
+}
+
+model categories {
+  id           BigInt         @id @default(autoincrement())
+  user_id      BigInt?
+  name         String
+  type         String
+  user         users?         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  transactions transactions[]
+  rules        rules[]
+  budget_items budget_items[]
+}
+
+model transactions {
+  id                BigInt      @id @default(autoincrement())
+  user_id           BigInt?
+  account_id        BigInt?
+  import_id         BigInt?
+  date              DateTime    @db.Date
+  description_raw   String
+  description_clean String?
+  amount            Decimal
+  type              String
+  category_id       BigInt?
+  merchant          String?
+  auto_classified   Boolean     @default(false)
+  created_at        DateTime    @default(now()) @db.Timestamptz()
+  hash              String?     @unique
+  user              users?      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  account           accounts?   @relation(fields: [account_id], references: [id], onDelete: Cascade)
+  import            imports?    @relation(fields: [import_id], references: [id], onDelete: SetNull)
+  category          categories? @relation(fields: [category_id], references: [id], onDelete: SetNull)
+
+  @@index([hash], name: "transactions_hash_idx")
+}
+
+model rules {
+  id            BigInt      @id @default(autoincrement())
+  user_id       BigInt?
+  keyword       String
+  category_id   BigInt?
+  merchant_name String?
+  priority      Int
+  user          users?      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  category      categories? @relation(fields: [category_id], references: [id], onDelete: Cascade)
+}
+
+model debts {
+  id                 BigInt          @id @default(autoincrement())
+  user_id            BigInt?
+  name               String
+  entity             String
+  initial_balance    Decimal
+  current_balance    Decimal
+  monthly_rate       Decimal
+  min_payment        Decimal
+  start_date         DateTime        @db.Date
+  linked_description String?
+  status             String          @default("active")
+  created_at         DateTime        @default(now()) @db.Timestamptz()
+  user               users?          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  debt_payments      debt_payments[]
+  budget_items       budget_items[]
+}
+
+model debt_payments {
+  id               BigInt   @id @default(autoincrement())
+  debt_id          BigInt
+  cycle_start      DateTime @db.Date
+  scheduled_amount Decimal
+  actual_amount    Decimal
+  extra_payment    Decimal  @default(0)
+  balance_after    Decimal
+  created_at       DateTime @default(now()) @db.Timestamptz()
+  debt             debts    @relation(fields: [debt_id], references: [id], onDelete: Cascade)
+
+  @@unique([debt_id, cycle_start])
+}
+
+model budget_items {
+  id                 BigInt      @id @default(autoincrement())
+  user_id            BigInt?
+  cycle_start        DateTime    @db.Date
+  name               String
+  type               String
+  amount             Decimal
+  is_fixed           Boolean     @default(false)
+  category_id        BigInt?
+  debt_id            BigInt?
+  linked_description String?
+  created_at         DateTime    @default(now()) @db.Timestamptz()
+  user               users?      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  category           categories? @relation(fields: [category_id], references: [id], onDelete: SetNull)
+  debt               debts?      @relation(fields: [debt_id], references: [id], onDelete: SetNull)
+
+  @@unique([user_id, cycle_start, name])
+}

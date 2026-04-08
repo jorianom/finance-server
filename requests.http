@@ -1,0 +1,405 @@
+# Finance-Me API — REST Client
+# Instala la extensión "REST Client" (humao.rest-client) para ejecutar estas peticiones.
+# Presiona "Send Request" sobre cada bloque para enviar la petición.
+# El servidor debe estar corriendo: npm run dev
+
+@baseUrl = http://localhost:3000
+
+###############################################################################
+# PASO 0 — SEED (ejecutar una sola vez antes de todo lo demás)
+# Crea: user id=1, cuenta Bancolombia (id=1), cuenta Nequi (id=2),
+# y 6 categorías. Es idempotente: se puede ejecutar varias veces sin duplicar.
+###############################################################################
+
+### GET /seed — Inicializar datos base
+GET {{baseUrl}}/seed
+
+###
+
+###############################################################################
+# HEALTH CHECK
+###############################################################################
+
+### GET / — Health check
+GET {{baseUrl}}/
+
+###############################################################################
+# CATEGORÍAS (prerequisito: crear algunas antes de importar)
+# Las categorías se crean directamente en Supabase (no hay endpoint CRUD aún).
+# Seed mínimo de categorías en Supabase:
+#   INSERT INTO categories (user_id, name, type) VALUES
+#     (1, 'Suscripciones', 'gasto'),
+#     (1, 'Alimentación', 'gasto'),
+#     (1, 'Transporte', 'gasto'),
+#     (1, 'Ingresos', 'ingreso');
+###############################################################################
+
+###############################################################################
+# CUENTAS (prerequisito: crear una cuenta antes de importar)
+# Las cuentas también se crean en Supabase directamente (no hay endpoint CRUD aún).
+# Seed mínimo:
+#   INSERT INTO users (email) VALUES ('test@test.com');
+#   INSERT INTO accounts (user_id, bank_name, account_type, last_four_digits)
+#     VALUES (1, 'Bancolombia', 'ahorro', '1234');
+###############################################################################
+
+###############################################################################
+# RULES — Reglas de clasificación automática
+###############################################################################
+
+### GET /rules — Listar todas las reglas del usuario
+GET {{baseUrl}}/rules
+
+###
+
+### POST /rules — Crear regla: Netflix → Suscripciones (category_id=1)
+POST {{baseUrl}}/rules
+Content-Type: application/json
+
+{
+  "keyword": "netflix",
+  "category_id": 1,
+  "merchant_name": "Netflix",
+  "priority": 1
+}
+
+###
+
+### POST /rules — Crear regla: Spotify → Suscripciones
+POST {{baseUrl}}/rules
+Content-Type: application/json
+
+{
+  "keyword": "spotify",
+  "category_id": 1,
+  "merchant_name": "Spotify",
+  "priority": 2
+}
+
+###
+
+### POST /rules — Crear regla: Rappi → Alimentación (category_id=2)
+POST {{baseUrl}}/rules
+Content-Type: application/json
+
+{
+  "keyword": "rappi",
+  "category_id": 2,
+  "merchant_name": "Rappi",
+  "priority": 3
+}
+
+###############################################################################
+# IMPORTS — Subir archivo CSV
+# Formato Bancolombia esperado (columnas mínimas): Fecha,Descripción,Valor,Tipo
+# Formato Nequi esperado: Fecha Movimiento,Detalle,Monto
+###############################################################################
+
+### POST /imports — Subir CSV de Bancolombia (con account_id=1)
+# IMPORTANTE: cambia la ruta del archivo por la ruta real de tu CSV
+POST {{baseUrl}}/imports
+Content-Type: multipart/form-data; boundary=----FormBoundary
+
+------FormBoundary
+Content-Disposition: form-data; name="account_id"
+
+1
+------FormBoundary
+Content-Disposition: form-data; name="file"; filename="bancolombia.csv"
+Content-Type: text/csv
+
+Fecha,Descripción,Valor,Tipo
+15/01/2025,PAGO NETFLIX SUSCRIPCION,-49900,Débito
+15/01/2025,TRANSFERENCIA RECIBIDA NOMINA,3500000,Crédito
+20/01/2025,COMPRA RAPPI COLOMBIA,-85000,Débito
+22/01/2025,COMPRA SUPERMERCADO EXITO,-120000,Débito
+25/01/2025,PAGO SPOTIFY PREMIUM,-19900,Débito
+------FormBoundary--
+
+###
+
+### POST /imports — Subir CSV de Nequi
+POST {{baseUrl}}/imports
+Content-Type: multipart/form-data; boundary=----FormBoundary2
+
+------FormBoundary2
+Content-Disposition: form-data; name="account_id"
+
+1
+------FormBoundary2
+Content-Disposition: form-data; name="file"; filename="nequi.csv"
+Content-Type: text/csv
+
+Fecha Movimiento,Detalle,Monto,Tipo
+10/02/2025,Enviaste a Juan Perez,-50000,Envío
+12/02/2025,Recibiste de Maria Lopez,200000,Recibido
+14/02/2025,Pago Netflix,-49900,Pago
+------FormBoundary2--
+
+###
+
+### POST /imports — Test de duplicados (mismo CSV de Bancolombia — debe reportar duplicados)
+POST {{baseUrl}}/imports
+Content-Type: multipart/form-data; boundary=----FormBoundary3
+
+------FormBoundary3
+Content-Disposition: form-data; name="account_id"
+
+1
+------FormBoundary3
+Content-Disposition: form-data; name="file"; filename="bancolombia.csv"
+Content-Type: text/csv
+
+Fecha,Descripción,Valor,Tipo
+15/01/2025,PAGO NETFLIX SUSCRIPCION,-49900,Débito
+15/01/2025,TRANSFERENCIA RECIBIDA NOMINA,3500000,Crédito
+20/01/2025,COMPRA RAPPI COLOMBIA,-85000,Débito
+------FormBoundary3--
+
+###############################################################################
+# TRANSACTIONS — Consultar transacciones
+###############################################################################
+
+### POST /transactions/reclassify — Reclasificar TODAS las transacciones
+# Aplica las reglas actuales a todas las transacciones del usuario,
+# sobreescribiendo las categorías ya existentes.
+# Responde con { updated: N } indicando cuántas fueron actualizadas.
+POST {{baseUrl}}/transactions/reclassify
+Content-Type: application/json
+
+{}
+
+### GET /transactions — Todas (página 1, 20 por página)
+GET {{baseUrl}}/transactions
+
+###
+
+### GET /transactions — Con paginación personalizada
+GET {{baseUrl}}/transactions?page=1&limit=5
+
+###
+
+### GET /transactions — Filtrar por cuenta
+GET {{baseUrl}}/transactions?account_id=1
+
+###
+
+### GET /transactions — Filtrar por categoría
+GET {{baseUrl}}/transactions?category_id=1
+
+###
+
+### GET /transactions — Filtrar por rango de fechas
+GET {{baseUrl}}/transactions?from=2025-01-01&to=2025-01-31
+
+###
+
+### GET /transactions — Filtros combinados
+GET {{baseUrl}}/transactions?account_id=1&from=2025-01-01&to=2025-12-31&page=1&limit=10
+
+###############################################################################
+# SUMMARY — Resumen financiero
+###############################################################################
+
+### GET /summary — Resumen total del usuario
+GET {{baseUrl}}/transactions/summary
+
+###
+
+### GET /summary — Resumen filtrado por mes
+GET {{baseUrl}}/transactions/summary?from=2025-01-01&to=2025-01-31
+
+###
+
+### GET /summary — Resumen filtrado por cuenta
+GET {{baseUrl}}/transactions/summary?account_id=1
+
+###
+
+###############################################################################
+# DEUDAS Y AMORTIZACIONES
+###############################################################################
+
+### GET /debts — Listar deudas
+GET {{baseUrl}}/debts
+
+###
+
+### POST /debts — Crear deuda
+POST {{baseUrl}}/debts
+Content-Type: application/json
+
+{
+  "name": "Crédito Compensar",
+  "entity": "Compensar",
+  "initial_balance": 40150000,
+  "monthly_rate": 0.0136,
+  "min_payment": 1575000,
+  "start_date": "2026-04-01"
+}
+
+###
+
+### GET /debts/:id — Detalle con amortización
+GET {{baseUrl}}/debts/1
+
+###
+
+### PUT /debts/:id — Actualizar deuda
+PUT {{baseUrl}}/debts/1
+Content-Type: application/json
+
+{
+  "name": "Crédito Compensar",
+  "status": "active"
+}
+
+###
+
+### POST /debts/:id/payments — Registrar pago
+POST {{baseUrl}}/debts/1/payments
+Content-Type: application/json
+
+{
+  "cycle_start": "2026-04-25",
+  "actual_amount": 1575000
+}
+
+###
+
+### POST /debts/:id/payments — Registrar pago extra
+POST {{baseUrl}}/debts/1/payments
+Content-Type: application/json
+
+{
+  "cycle_start": "2026-05-25",
+  "actual_amount": 2000000
+}
+
+###
+
+### DELETE /debts/:id/payments/:paymentId — Eliminar pago
+DELETE {{baseUrl}}/debts/1/payments/1
+
+###
+
+### DELETE /debts/:id — Eliminar deuda
+DELETE {{baseUrl}}/debts/1
+
+###############################################################################
+# PRESUPUESTO POR CICLO
+###############################################################################
+
+### GET /budget?cycle= — Obtener presupuesto del ciclo
+GET {{baseUrl}}/budget?cycle=2025-06-25
+
+###
+
+### POST /budget — Crear ítem de presupuesto
+POST {{baseUrl}}/budget
+Content-Type: application/json
+
+{
+  "cycle_start": "2025-06-25",
+  "name": "Salario",
+  "type": "ingreso",
+  "amount": 5000000,
+  "is_fixed": true
+}
+
+###
+
+### POST /budget — Crear gasto fijo
+POST {{baseUrl}}/budget
+Content-Type: application/json
+
+{
+  "cycle_start": "2025-06-25",
+  "name": "Arriendo",
+  "type": "gasto",
+  "amount": 1200000,
+  "is_fixed": true,
+  "linked_description": "ARRIENDO"
+}
+
+###
+
+### POST /budget — Crear gasto variable
+POST {{baseUrl}}/budget
+Content-Type: application/json
+
+{
+  "cycle_start": "2025-06-25",
+  "name": "Mercado",
+  "type": "gasto",
+  "amount": 600000,
+  "is_fixed": false
+}
+
+###
+
+### PUT /budget/:id — Actualizar ítem
+PUT {{baseUrl}}/budget/1
+Content-Type: application/json
+
+{
+  "amount": 5500000
+}
+
+###
+
+### DELETE /budget/:id — Eliminar ítem
+DELETE {{baseUrl}}/budget/1
+
+###
+
+### POST /budget/copy-previous?cycle= — Copiar del ciclo anterior
+POST {{baseUrl}}/budget/copy-previous?cycle=2025-07-25
+
+###
+
+### POST /budget/confirm-suggestions — Confirmar sugerencias variables
+POST {{baseUrl}}/budget/confirm-suggestions
+Content-Type: application/json
+
+{
+  "cycle_start": "2025-07-25",
+  "items": [
+    {
+      "name": "Mercado",
+      "type": "gasto",
+      "amount": 600000,
+      "is_fixed": false
+    }
+  ]
+}
+
+###############################################################################
+# ENRICH TRANSACTION (usado por Google Apps Script de RappiPay)
+###############################################################################
+
+### POST /transactions/enrich — Enriquecer transacción con merchant del email
+POST {{baseUrl}}/transactions/enrich
+Content-Type: application/json
+x-api-key: mi-clave-local-secreta
+
+{
+  "bank_name": "RappiPay",
+  "date": "2026-03-09",
+  "amount": 41810,
+  "merchant": "TIENDA D1 EL RECUERDO BOGOTA CO"
+}
+
+### POST /transactions/enrich — Con account_id directo
+POST {{baseUrl}}/transactions/enrich
+Content-Type: application/json
+x-api-key: mi-clave-local-secreta
+
+{
+  "account_id": 3,
+  "date": "2026-03-09",
+  "amount": 24900,
+  "merchant": "RAPPI PRIME",
+  "reference": "123456789",
+  "email_id": "abc123"
+}
