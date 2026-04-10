@@ -40,6 +40,7 @@ export function buildApp() {
     getUserSettingsUseCase: container.getUserSettingsUseCase,
     enrichTransactionUseCase: container.enrichTransactionUseCase,
     ingestTransactionUseCase: container.ingestTransactionUseCase,
+    createTransactionUseCase: container.createTransactionUseCase,
   });
 
   fastify.register(userRoutes, {

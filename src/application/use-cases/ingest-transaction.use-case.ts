@@ -69,14 +69,15 @@ export class IngestTransactionUseCase {
       return { status: 'duplicate' };
     }
 
-    // Check for a match from a prior CSV/PDF import (cross-source dedup)
+    // Check for a match from a prior CSV/PDF import (cross-source dedup).
+    // Credit transactions (incoming transfers) post on the same day — exact match only.
+    // Debit transactions (purchases) may take up to 1 day to post.
     const date = new Date(input.date + 'T00:00:00.000Z');
     let matches = await this.txRepo.findByMatchCriteria(accountId, date, input.amount, txType);
 
-    // Retry up to +3 days: weekends/holidays may post the transaction several days later
-    for (let offset = 1; offset <= 3 && matches.length === 0; offset++) {
+    if (matches.length === 0 && txType === 'debit') {
       const retryDate = new Date(date);
-      retryDate.setUTCDate(retryDate.getUTCDate() + offset);
+      retryDate.setUTCDate(retryDate.getUTCDate() + 1);
       matches = await this.txRepo.findByMatchCriteria(accountId, retryDate, input.amount, txType);
     }
 

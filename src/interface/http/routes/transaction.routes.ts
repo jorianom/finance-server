@@ -11,6 +11,7 @@ import { GetAvailableCyclesUseCase } from '../../../application/use-cases/get-av
 import { GetUserSettingsUseCase } from '../../../application/use-cases/get-user-settings.use-case.js';
 import { EnrichTransactionUseCase } from '../../../application/use-cases/enrich-transaction.use-case.js';
 import { IngestTransactionUseCase } from '../../../application/use-cases/ingest-transaction.use-case.js';
+import { CreateTransactionUseCase } from '../../../application/use-cases/create-transaction.use-case.js';
 import { transactionQuerySchema, summaryQuerySchema } from '../schemas/transaction.schema.js';
 
 const USER_ID = 1; // MVP: hardcoded user
@@ -23,6 +24,7 @@ export interface TransactionRoutesOptions {
   getUserSettingsUseCase: GetUserSettingsUseCase;
   enrichTransactionUseCase: EnrichTransactionUseCase;
   ingestTransactionUseCase: IngestTransactionUseCase;
+  createTransactionUseCase: CreateTransactionUseCase;
 }
 
 export async function transactionRoutes(
@@ -37,6 +39,7 @@ export async function transactionRoutes(
     getUserSettingsUseCase,
     enrichTransactionUseCase,
     ingestTransactionUseCase,
+    createTransactionUseCase,
   } = opts;
 
   fastify.get('/cycles', async (_request, reply) => {
@@ -96,6 +99,40 @@ export async function transactionRoutes(
     });
 
     return reply.send(result);
+  });
+
+  // POST / — manual transaction creation
+  fastify.post('/', async (request, reply) => {
+    const body = request.body as {
+      account_id: number;
+      date: string;
+      description_raw: string;
+      description_clean?: string;
+      amount: number;
+      type: 'debit' | 'credit';
+      category_id?: number | null;
+      merchant?: string;
+    };
+
+    if (!body.account_id || !body.date || !body.description_raw || !body.amount || !body.type) {
+      return reply.status(400).send({ error: 'account_id, date, description_raw, amount, and type are required' });
+    }
+    if (!['debit', 'credit'].includes(body.type)) {
+      return reply.status(400).send({ error: 'type must be "debit" or "credit"' });
+    }
+
+    const tx = await createTransactionUseCase.execute(USER_ID, {
+      accountId: body.account_id,
+      date: body.date,
+      descriptionRaw: body.description_raw,
+      descriptionClean: body.description_clean,
+      amount: body.amount,
+      type: body.type,
+      categoryId: body.category_id,
+      merchant: body.merchant,
+    });
+
+    return reply.status(201).send(tx);
   });
 
   fastify.post('/reclassify', async (_request, reply) => {

@@ -51,6 +51,7 @@ import { CopyBudgetFromPreviousUseCase } from './application/use-cases/copy-budg
 import { ConfirmBudgetSuggestionsUseCase } from './application/use-cases/confirm-budget-suggestions.use-case.js';
 import { EnrichTransactionUseCase } from './application/use-cases/enrich-transaction.use-case.js';
 import { IngestTransactionUseCase } from './application/use-cases/ingest-transaction.use-case.js';
+import { CreateTransactionUseCase } from './application/use-cases/create-transaction.use-case.js';
 
 export function createContainer() {
   // Infrastructure instances
@@ -120,6 +121,9 @@ export function createContainer() {
   const ingestTransactionUseCase = new IngestTransactionUseCase(
     transactionRepo, ruleRepo, categoryRepo, resolveAccountId,
   );
+  const createTransactionUseCase = new CreateTransactionUseCase(
+    transactionRepo, ruleRepo,
+  );
 
   return {
     prisma,
@@ -149,5 +153,6 @@ export function createContainer() {
     confirmBudgetSuggestionsUseCase,
     enrichTransactionUseCase,
     ingestTransactionUseCase,
+    createTransactionUseCase,
   };
 }
