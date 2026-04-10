@@ -10,6 +10,7 @@ import { ReclassifyTransactionsUseCase } from '../../../application/use-cases/re
 import { GetAvailableCyclesUseCase } from '../../../application/use-cases/get-available-cycles.use-case.js';
 import { GetUserSettingsUseCase } from '../../../application/use-cases/get-user-settings.use-case.js';
 import { EnrichTransactionUseCase } from '../../../application/use-cases/enrich-transaction.use-case.js';
+import { IngestTransactionUseCase } from '../../../application/use-cases/ingest-transaction.use-case.js';
 import { transactionQuerySchema, summaryQuerySchema } from '../schemas/transaction.schema.js';
 
 const USER_ID = 1; // MVP: hardcoded user
@@ -21,6 +22,7 @@ export interface TransactionRoutesOptions {
   getAvailableCyclesUseCase: GetAvailableCyclesUseCase;
   getUserSettingsUseCase: GetUserSettingsUseCase;
   enrichTransactionUseCase: EnrichTransactionUseCase;
+  ingestTransactionUseCase: IngestTransactionUseCase;
 }
 
 export async function transactionRoutes(
@@ -34,6 +36,7 @@ export async function transactionRoutes(
     getAvailableCyclesUseCase,
     getUserSettingsUseCase,
     enrichTransactionUseCase,
+    ingestTransactionUseCase,
   } = opts;
 
   fastify.get('/cycles', async (_request, reply) => {
@@ -142,6 +145,49 @@ export async function transactionRoutes(
     });
 
     return reply.send(result);
+  });
+
+  fastify.post('/ingest', async (request, reply) => {
+    // API key auth — same key as /enrich (same trust boundary: internal scripts)
+    const apiKey = request.headers['x-api-key'];
+    const expectedKey = process.env['ENRICH_API_KEY'];
+    if (!expectedKey || apiKey !== expectedKey) {
+      return reply.status(401).send({ error: 'Invalid or missing API key' });
+    }
+
+    const body = request.body as {
+      bank_name: string;
+      date: string;
+      amount: number;
+      merchant: string;
+      type?: 'debit' | 'credit';
+      reference?: string;
+      email_id?: string;
+      destination_key?: string;
+      destination_bank?: string;
+    };
+
+    if (!body.bank_name) {
+      return reply.status(400).send({ error: 'bank_name is required' });
+    }
+    if (!body.date || !body.amount || !body.merchant) {
+      return reply.status(400).send({ error: 'date, amount, and merchant are required' });
+    }
+
+    const result = await ingestTransactionUseCase.execute(USER_ID, {
+      bankName: body.bank_name,
+      date: body.date,
+      amount: body.amount,
+      merchant: body.merchant,
+      type: body.type,
+      reference: body.reference,
+      emailId: body.email_id,
+      destinationKey: body.destination_key,
+      destinationBank: body.destination_bank,
+    });
+
+    const statusCode = result.status === 'created' ? 201 : 200;
+    return reply.status(statusCode).send(result);
   });
 }
 

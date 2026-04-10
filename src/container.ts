@@ -50,6 +50,7 @@ import { DeleteBudgetItemUseCase } from './application/use-cases/delete-budget-i
 import { CopyBudgetFromPreviousUseCase } from './application/use-cases/copy-budget-from-previous.use-case.js';
 import { ConfirmBudgetSuggestionsUseCase } from './application/use-cases/confirm-budget-suggestions.use-case.js';
 import { EnrichTransactionUseCase } from './application/use-cases/enrich-transaction.use-case.js';
+import { IngestTransactionUseCase } from './application/use-cases/ingest-transaction.use-case.js';
 
 export function createContainer() {
   // Infrastructure instances
@@ -116,6 +117,9 @@ export function createContainer() {
   const enrichTransactionUseCase = new EnrichTransactionUseCase(
     transactionRepo, ruleRepo, categoryRepo, resolveAccountId,
   );
+  const ingestTransactionUseCase = new IngestTransactionUseCase(
+    transactionRepo, ruleRepo, categoryRepo, resolveAccountId,
+  );
 
   return {
     prisma,
@@ -144,5 +148,6 @@ export function createContainer() {
     copyBudgetFromPreviousUseCase,
     confirmBudgetSuggestionsUseCase,
     enrichTransactionUseCase,
+    ingestTransactionUseCase,
   };
 }

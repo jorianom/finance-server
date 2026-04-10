@@ -39,6 +39,7 @@ export function buildApp() {
     getAvailableCyclesUseCase: container.getAvailableCyclesUseCase,
     getUserSettingsUseCase: container.getUserSettingsUseCase,
     enrichTransactionUseCase: container.enrichTransactionUseCase,
+    ingestTransactionUseCase: container.ingestTransactionUseCase,
   });
 
   fastify.register(userRoutes, {

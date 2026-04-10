@@ -403,3 +403,72 @@ x-api-key: mi-clave-local-secreta
   "reference": "123456789",
   "email_id": "abc123"
 }
+
+###############################################################################
+# INGEST TRANSACTION (nueva fuente: Google Apps Script de RappiPay)
+# Crea la transacción si no existe, enriquece si fue importada antes por CSV/PDF,
+# o retorna 'duplicate' si ya fue ingestada por este mismo correo.
+# Respuestas posibles:
+#   201 { status: 'created',   transactionId, categoryId, merchant }
+#   200 { status: 'enriched',  transactionId, categoryId, merchant }
+#   200 { status: 'duplicate' }
+#   200 { status: 'not_found' }  — bank_name no coincide con ninguna cuenta
+###############################################################################
+
+### POST /transactions/ingest — Compra en comercio (nueva transacción)
+POST {{baseUrl}}/transactions/ingest
+Content-Type: application/json
+x-api-key: mi-clave-local-secreta
+
+{
+  "bank_name": "RappiPay",
+  "date": "2026-04-05",
+  "amount": 41810,
+  "merchant": "TIENDA D1 EL RECUERDO BOGOTA CO"
+}
+
+###
+
+### POST /transactions/ingest — Mismo correo de nuevo (debe retornar 'duplicate')
+POST {{baseUrl}}/transactions/ingest
+Content-Type: application/json
+x-api-key: mi-clave-local-secreta
+
+{
+  "bank_name": "RappiPay",
+  "date": "2026-04-05",
+  "amount": 41810,
+  "merchant": "TIENDA D1 EL RECUERDO BOGOTA CO"
+}
+
+###
+
+### POST /transactions/ingest — Transferencia saliente (con destino)
+POST {{baseUrl}}/transactions/ingest
+Content-Type: application/json
+x-api-key: mi-clave-local-secreta
+
+{
+  "bank_name": "RappiPay",
+  "date": "2026-04-07",
+  "amount": 150000,
+  "merchant": "Transferencia interbancaria",
+  "destination_key": "3001234567",
+  "destination_bank": "Bancolombia"
+}
+
+###
+
+### POST /transactions/ingest — Transferencia entrante (credit)
+POST {{baseUrl}}/transactions/ingest
+Content-Type: application/json
+x-api-key: mi-clave-local-secreta
+
+{
+  "bank_name": "RappiPay",
+  "date": "2026-04-08",
+  "amount": 500000,
+  "merchant": "Transferencia entrante (Bancolombia)",
+  "type": "credit"
+}
+
