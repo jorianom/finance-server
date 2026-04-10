@@ -43,6 +43,7 @@ export interface TransactionDescription {
   id: number;
   descriptionRaw: string;
   descriptionClean: string | null;
+  merchant: string | null;
   type: 'debit' | 'credit';
 }
 

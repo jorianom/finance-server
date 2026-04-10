@@ -10,9 +10,10 @@ export interface CreateDebtDTO {
   currentBalance: number;
   monthlyRate: number;
   minPayment: number;
+  monthlyInsurance: number;
   startDate: string;
   linkedDescription?: string;
-  status?: 'active' | 'paid_off';
+  status?: 'active' | 'paid_off' | 'pending';
 }
 
 export interface UpdateDebtDTO {
@@ -21,8 +22,9 @@ export interface UpdateDebtDTO {
   currentBalance?: number;
   monthlyRate?: number;
   minPayment?: number;
+  monthlyInsurance?: number;
   linkedDescription?: string | null;
-  status?: 'active' | 'paid_off';
+  status?: 'active' | 'paid_off' | 'pending';
 }
 
 export interface IDebtRepository {

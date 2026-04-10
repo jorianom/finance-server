@@ -61,6 +61,7 @@ export async function debtRoutes(
       initial_balance: number;
       monthly_rate: number;
       min_payment: number;
+      monthly_insurance?: number;
       start_date: string;
       linked_description?: string;
     };
@@ -73,6 +74,7 @@ export async function debtRoutes(
       currentBalance: body.initial_balance, // starts equal to initial
       monthlyRate: body.monthly_rate,
       minPayment: body.min_payment,
+      monthlyInsurance: body.monthly_insurance ?? 0,
       startDate: body.start_date,
       linkedDescription: body.linked_description,
     });
@@ -103,8 +105,9 @@ export async function debtRoutes(
       current_balance?: number;
       monthly_rate?: number;
       min_payment?: number;
+      monthly_insurance?: number;
       linked_description?: string | null;
-      status?: 'active' | 'paid_off';
+      status?: 'active' | 'paid_off' | 'pending';
     };
 
     const debt = await updateDebtUseCase.execute(Number(id), USER_ID, {
@@ -113,6 +116,7 @@ export async function debtRoutes(
       currentBalance: body.current_balance,
       monthlyRate: body.monthly_rate,
       minPayment: body.min_payment,
+      monthlyInsurance: body.monthly_insurance,
       linkedDescription: body.linked_description,
       status: body.status,
     });

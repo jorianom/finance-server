@@ -10,9 +10,10 @@ export interface DebtProps {
   currentBalance: number;
   monthlyRate: number;
   minPayment: number;
+  monthlyInsurance: number;
   startDate: string; // ISO date
   linkedDescription?: string | null;
-  status: 'active' | 'paid_off';
+  status: 'active' | 'paid_off' | 'pending';
   createdAt?: string;
 }
 
@@ -22,6 +23,7 @@ export interface AmortizationRow {
   startBalance: number;
   payment: number;
   interest: number;
+  insurance: number;
   principal: number;
   endBalance: number;
 }
@@ -35,9 +37,10 @@ export class Debt {
   readonly currentBalance: number;
   readonly monthlyRate: number;
   readonly minPayment: number;
+  readonly monthlyInsurance: number;
   readonly startDate: string;
   readonly linkedDescription: string | null;
-  readonly status: 'active' | 'paid_off';
+  readonly status: 'active' | 'paid_off' | 'pending';
   readonly createdAt?: string;
 
   private constructor(props: DebtProps) {
@@ -49,6 +52,7 @@ export class Debt {
     this.currentBalance = props.currentBalance;
     this.monthlyRate = props.monthlyRate;
     this.minPayment = props.minPayment;
+    this.monthlyInsurance = props.monthlyInsurance ?? 0;
     this.startDate = props.startDate;
     this.linkedDescription = props.linkedDescription ?? null;
     this.status = props.status;
@@ -65,8 +69,8 @@ export class Debt {
     if (props.monthlyRate < 0) {
       throw new Error('Monthly rate cannot be negative');
     }
-    if (props.minPayment <= 0) {
-      throw new Error('Minimum payment must be greater than zero');
+    if (props.minPayment < 0) {
+      throw new Error('Minimum payment cannot be negative');
     }
     return new Debt(props);
   }
@@ -78,6 +82,7 @@ export class Debt {
   /**
    * Calculate the amortization schedule from the current balance.
    * Uses French amortization: fixed payment, decreasing interest, increasing principal.
+   * Interest = balance * monthlyRate (matches bank amortization tables).
    * @param fromBalance - starting balance (defaults to currentBalance)
    * @param maxMonths - safety limit to prevent infinite loops (default 600 = 50 years)
    * @param labelFrom - date to use for the first row label (defaults to startDate+1 month)
@@ -89,8 +94,11 @@ export class Debt {
   ): AmortizationRow[] {
     const rows: AmortizationRow[] = [];
     let balance = fromBalance ?? this.currentBalance;
-    const rate = this.monthlyRate;
     const payment = this.minPayment;
+    const insurance = this.monthlyInsurance;
+
+    // No payment defined — nothing to amortize
+    if (payment <= 0) return rows;
 
     // If a labelFrom date is provided use it directly, otherwise fall back to startDate+1 month
     const labelBase = labelFrom ?? (() => {
@@ -98,31 +106,35 @@ export class Debt {
       s.setMonth(s.getMonth() + 1);
       return s;
     })();
-    let currentMonth = labelBase.getMonth();
-    let currentYear = labelBase.getFullYear();
+    const baseMonth = labelBase.getMonth();
+    const baseYear = labelBase.getFullYear();
 
     const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
       'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
     let monthIndex = 0;
     while (balance > 0.01 && monthIndex < maxMonths) {
-      const interest = Math.round(balance * rate);
-      const principal = Math.min(payment - interest, balance);
-      const actualPayment = interest + principal;
-      const endBalance = Math.max(balance - principal, 0);
-
-      const labelMonth = (currentMonth + monthIndex) % 12;
-      const labelYear = currentYear + Math.floor((currentMonth + monthIndex) / 12);
+      const labelMonth = (baseMonth + monthIndex) % 12;
+      const labelYear = baseYear + Math.floor((baseMonth + monthIndex) / 12);
       const label = `${monthNames[labelMonth]} ${String(labelYear).slice(-2)}`;
+
+      // Apply monthly rate directly — matches bank amortization tables
+      const interest = Math.round(balance * this.monthlyRate);
+      // Clamp to [0, balance]: prevents negative principal when payment < interest + insurance
+      const principal = Math.min(Math.max(Math.round(payment - interest - insurance), 0), Math.round(balance));
+      const endBalance = Math.max(Math.round(balance) - principal, 0);
+      // Show the fixed scheduled payment on all rows; only the settlement (last) row differs
+      const scheduledPayment = endBalance === 0 ? interest + insurance + principal : Math.round(payment);
 
       rows.push({
         month: monthIndex + 1,
         label,
         startBalance: Math.round(balance),
-        payment: Math.round(actualPayment),
+        payment: scheduledPayment,
         interest,
-        principal: Math.round(principal),
-        endBalance: Math.round(endBalance),
+        insurance,
+        principal,
+        endBalance,
       });
 
       balance = endBalance;

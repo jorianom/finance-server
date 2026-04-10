@@ -7,8 +7,8 @@ export const createDebtBodySchema = {
     entity: { type: 'string', minLength: 1 },
     initial_balance: { type: 'number', exclusiveMinimum: 0 },
     monthly_rate: { type: 'number', minimum: 0 },
-    min_payment: { type: 'number', exclusiveMinimum: 0 },
-    start_date: { type: 'string', format: 'date' },
+    min_payment: { type: 'number', minimum: 0 },
+    monthly_insurance: { type: 'number', minimum: 0 },
     linked_description: { type: 'string' },
   },
   required: ['name', 'entity', 'initial_balance', 'monthly_rate', 'min_payment', 'start_date'] as const,
@@ -21,9 +21,10 @@ export const updateDebtBodySchema = {
     entity: { type: 'string', minLength: 1 },
     current_balance: { type: 'number', minimum: 0 },
     monthly_rate: { type: 'number', minimum: 0 },
-    min_payment: { type: 'number', exclusiveMinimum: 0 },
+    min_payment: { type: 'number', minimum: 0 },
+    monthly_insurance: { type: 'number', minimum: 0 },
     linked_description: { type: ['string', 'null'] },
-    status: { type: 'string', enum: ['active', 'paid_off'] },
+    status: { type: 'string', enum: ['active', 'paid_off', 'pending'] },
   },
 };
 

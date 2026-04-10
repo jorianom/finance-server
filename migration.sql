@@ -92,6 +92,7 @@ create table debts (
   current_balance numeric check (current_balance >= 0) not null,
   monthly_rate numeric check (monthly_rate >= 0) not null,
   min_payment numeric check (min_payment > 0) not null,
+  monthly_insurance numeric not null default 0,
   start_date date not null,
   linked_description text,
   status text check (status in ('active', 'paid_off')) not null default 'active',

@@ -26,9 +26,12 @@ export class GetDebtDetailUseCase {
     if (!debt) return null;
 
     const payments = await this.paymentRepo.findByDebtId(debtId);
-    const schedule = debt.calculateAmortizationSchedule(undefined, 600, new Date());
+
+    // Single source of truth: compute everything from initialBalance using the bank-accurate formula.
+    // The Restante schedule is simply the tail of the full schedule after the paid months.
     const fullSchedule = debt.calculateAmortizationSchedule(debt.initialBalance);
-    const totalInterestRemaining = debt.getTotalInterest();
+    const schedule = fullSchedule.slice(payments.length);
+    const totalInterestRemaining = schedule.reduce((sum, r) => sum + r.interest, 0);
 
     return {
       debt,

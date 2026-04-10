@@ -194,12 +194,13 @@ export class PrismaTransactionRepository implements ITransactionRepository {
   async findDescriptions(userId: number): Promise<TransactionDescription[]> {
     const records = await this.prisma.transactions.findMany({
       where: { user_id: BigInt(userId) },
-      select: { id: true, description_raw: true, description_clean: true, type: true },
+      select: { id: true, description_raw: true, description_clean: true, merchant: true, type: true },
     });
     return records.map(r => ({
       id: Number(r.id),
       descriptionRaw: r.description_raw,
       descriptionClean: r.description_clean,
+      merchant: r.merchant,
       type: r.type as 'debit' | 'credit',
     }));
   }
@@ -208,13 +209,20 @@ export class PrismaTransactionRepository implements ITransactionRepository {
     if (updates.length === 0) return 0;
     await Promise.all(
       updates.map(u =>
-        this.prisma.$executeRaw`
-          UPDATE transactions
-          SET category_id       = ${BigInt(u.categoryId)},
-              merchant          = ${u.merchant},
-              auto_classified   = ${u.autoClassified}
-          WHERE id = ${BigInt(u.id)}
-        `,
+        u.merchant !== null
+          ? this.prisma.$executeRaw`
+              UPDATE transactions
+              SET category_id     = ${BigInt(u.categoryId)},
+                  merchant        = ${u.merchant},
+                  auto_classified = ${u.autoClassified}
+              WHERE id = ${BigInt(u.id)}
+            `
+          : this.prisma.$executeRaw`
+              UPDATE transactions
+              SET category_id     = ${BigInt(u.categoryId)},
+                  auto_classified = ${u.autoClassified}
+              WHERE id = ${BigInt(u.id)}
+            `,
       ),
     );
     return updates.length;

@@ -23,7 +23,7 @@ export class ReclassifyTransactionsUseCase {
 
     const updates = transactions
       .map(tx => {
-        const text = tx.descriptionClean ?? tx.descriptionRaw;
+        const text = tx.merchant ?? tx.descriptionClean ?? tx.descriptionRaw;
         const result = classify(text, rules);
         const categoryId = result.categoryId
           ?? (tx.type === 'credit' ? fallback.incomeCategoryId : fallback.expenseCategoryId);
